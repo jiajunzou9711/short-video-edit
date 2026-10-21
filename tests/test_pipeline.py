@@ -106,6 +106,30 @@ class MediaTests(unittest.TestCase):
             plan=p.read(job/'editorial.json'); plan['captions'][0]['text']='改过的字幕'; p.write(job/'editorial.json',plan)
             with self.assertRaises(ValueError): p.check(job)
 
+    def test_rerender_invalidates_previous_upload_and_qa_even_on_failure(self):
+        with tempfile.TemporaryDirectory(prefix='daily-video-rerender-') as tmp:
+            job = self._job(Path(tmp), {'captions': [{'start': .2, 'end': 2.8, 'text': '字幕'}]})
+            p.render(job)
+            p.check(job)
+            p.write(job/'publish-status.json', {
+                'xiaohongshu': {'status': 'awaiting_user_publish', 'uploaded': True},
+                'wechat_channels': {'status': 'manual_upload_ready'}})
+            (job/'视频号发布文案.txt').write_text('obsolete copy')
+            # Cover extraction/encoding can fail after invalidation. Old records
+            # must not certify either a failed render or a later successful one.
+            with patch.object(p, 'make_cover', side_effect=RuntimeError('synthetic failure')):
+                with self.assertRaises(RuntimeError):
+                    p.render(job)
+            for name in ('publish.json', 'render-check.json', 'qa-check.json', '视频号发布文案.txt'):
+                self.assertFalse((job/name).exists())
+            status = p.read(job/'publish-status.json')
+            self.assertEqual(status['xiaohongshu']['status'], 'not_prepared')
+            self.assertNotIn('uploaded', status['xiaohongshu'])
+            p.render(job)
+            self.assertFalse((job/'qa-check.json').exists())
+            self.assertEqual(p.read(job/'publish-status.json')['wechat_channels']['status'], 'not_prepared')
+            self.assertTrue(p.check(job)['full_decode_passed'])
+
     def test_platform_bottom_safe_area(self):
         with tempfile.TemporaryDirectory(prefix='daily-video-safe-area-') as tmp:
             root=Path(tmp); src=root/'input.mp4'; job=root/'job'; (job/'work').mkdir(parents=True)

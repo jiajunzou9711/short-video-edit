@@ -5,7 +5,7 @@ description: 处理2–15分钟杂志或论文解读口播视频：校对字幕�
 
 # 每日文章视频
 
-这是通用 agent 工作流，不依赖特定模型厂商或产品。首次安装/配置读取 [安装规程](references/INSTALL.md)，使用本 skill 的 `scripts/setup.py`；ASR 细节见 [ASR_SETUP.md](references/ASR_SETUP.md)。以用户指定的媒体工作区为根；脚本为本 skill 的 `scripts/pipeline.py`；每期目录 `output/daily-video/<视频名>`，同名不同输入使用新目录。用户给路径即执行，不启动定时监听。schema 与故障处理见[工作流参考](references/WORKFLOW.md)，仅在需要时读取对应段落。
+这是通用 agent 工作流，不依赖特定模型厂商或产品。首次安装/配置读取 [安装规程](references/INSTALL.md)，使用本 skill 的 `scripts/setup.py`；ASR 细节见 [ASR_SETUP.md](references/ASR_SETUP.md)。安装后所有命令中的 `<venv-python>` 均使用安装器返回的虚拟环境 Python 绝对路径，不使用系统 `python3`；以用户指定的媒体工作区为根；脚本为本 skill 的 `scripts/pipeline.py`；每期目录 `output/daily-video/<视频名>`，同名不同输入使用新目录。用户给路径即执行，不启动定时监听。schema 与故障处理见[工作流参考](references/WORKFLOW.md)，仅在需要时读取对应段落。
 
 ## 不变约束
 
@@ -18,10 +18,10 @@ description: 处理2–15分钟杂志或论文解读口播视频：校对字幕�
 
 ## 执行
 
-1. `python3 <脚本> prepare <视频绝对路径> <本期目录>`：检查音轨、豆包语音录音文件识别极速版字级转写、静音候选、抽样帧。`work/pause-candidates.json`按字级间隔列出全部≥0.9秒停顿，`acoustic_silence`低于0.5的为仅ASR候选，须审听后再决定；`suggested-cuts.json`只含声学确认的。HDR输入会提示，注意封面与预览色彩。凭据从使用者本机的 `~/.config/volc.env` 或 `VOLC_CONFIG_FILE` 指定位置读取，支持安全注入的环境变量；先运行 `setup.py doctor` 检查，缺少配置时按 [ASR_SETUP.md](references/ASR_SETUP.md) 引导使用者本机填写；不打印密钥。静音输入需带声音原片/同步录音。同一期返工复用work内ASR，不重复调用识别。
+1. `<venv-python> <脚本> prepare <视频绝对路径> <本期目录>`：检查音轨、豆包语音录音文件识别极速版字级转写、静音候选、抽样帧。`work/pause-candidates.json`按字级间隔列出全部≥0.9秒停顿，`acoustic_silence`低于0.5的为仅ASR候选，须审听后再决定；`suggested-cuts.json`只含声学确认的。HDR输入会提示，注意封面与预览色彩。凭据从使用者本机的 `~/.config/volc.env` 或 `VOLC_CONFIG_FILE` 指定位置读取，支持安全注入的环境变量；先运行 `setup.py doctor` 检查，缺少配置时按 [ASR_SETUP.md](references/ASR_SETUP.md) 引导使用者本机填写；不打印密钥。静音输入需带声音原片/同步录音。同一期返工复用work内ASR，不重复调用识别。
 2. 通读完整 `work/transcript.txt`、静音候选和输入抽样帧；若本期解读文章，定位对应PDF并读取相关完整文章；若是本人观点口播，记录此来源，不虚构PDF或研究依据。PDF操作优先使用环境中可用的 PDF skill 或 PDF 读取工具。只按需读取字级时间戳片段，避免输出整个ASR JSON。字幕逐条校对，疑点提取短音频审听；无音频能力就如实记录未审听。
 3. 写 `editorial.json`：原视频时间的captions/cuts/annotations、cover_title/cover_time、两平台文案、source_evidence/review_notes，完成实质校对才设reviewed:true。每期检测长停顿，约1秒以上空白为候选，结合声学静音、ASR无口播区间和上下文自主剪除，通常两侧各留0.2秒；保留呼吸/强调，不截词。字幕最多两行，按字级时间断句，不拆英文，不均匀伪造时间戳。
-4. `python3 <脚本> render <本期目录>`，再 `python3 <脚本> check <本期目录>`。editorial.json在render后改动过，check会拒绝，须重新render。check合并完整解码、时长/音轨存在性检查、开头/中段/结尾、每个解释框及每处剪切两侧抽帧，生成work/qa-contact-sheet.jpg、qa-check.json和两平台文案。查看拼图及cover.jpg，核对字幕、解释框、脸部、溢出、切点和音画同步，并完成上述封面表情与色彩两项检查；拼图过小或疑点再看原尺寸帧/短片段。HDR封面若仍由普通FFmpeg抽帧生成，须按专用操作替换为通过色彩检查的版本再上传。技术检查不等于音频审听或视觉通过，不假称验证。
+4. `<venv-python> <脚本> render <本期目录>`，再 `<venv-python> <脚本> check <本期目录>`。editorial.json在render后改动过，check会拒绝，须重新render。check合并完整解码、时长/音轨存在性检查、开头/中段/结尾、每个解释框及每处剪切两侧抽帧，生成work/qa-contact-sheet.jpg、qa-check.json和两平台文案。查看拼图及cover.jpg，核对字幕、解释框、脸部、溢出、切点和音画同步，并完成上述封面表情与色彩两项检查；拼图过小或疑点再看原尺寸帧/短片段。HDR封面若仍由普通FFmpeg抽帧生成，须按专用操作替换为通过色彩检查的版本再上传。技术检查不等于音频审听或视觉通过，不假称验证。
 5. 小红书发布前准备的完成标准是：页面已填好所有适用发布信息，只差用户点击最后“发布”，不能只交付本地成品或停在上传完成。登录检查优先复用已有创作页；若只有已登录的小红书主页，读取主页“发布”链接并进入其完整地址，待页面加载后核对账号。不要仅凭直开后台根地址跳到 `/login` 就要求用户重新登录；只有正式发布入口也明确要求认证时才请求用户处理。检查实时登录账号，上传同一成品视频与cover.jpg；按浏览器要求读file-uploads文档。填好标题、摘要/正文和少量正式话题，从平台候选中选择，避开标为“活动话题”的标签。根据本期内容自主选择一个相关的已发布视频作“引用笔记”链接，并加入一个最合适的已有合集；不照搬上一期选择，不创建新合集，没有相关项则如实说明。检查原创声明及其他适用声明，真实的本人出镜解读可声明原创；接受须知时遵守工具的当次确认规则，不虚构地点、日期或内容来源。无需为凑齐字段添加无关地点、群聊、投票、路线或营销组件。上传完成后核对标题、正文、正式话题、引用笔记、合集、原创声明、共用封面小图及活动未关联，取消任何自动关联活动。自动章节若使用须校对后应用，不能保留未核对的自动内容。重上传时使用不同文件名触发更新，并重查可能被重置的声明和设置。最终保留发布前页面，绝不点击“发布”。
 6. 写publish-status.json：小红书awaiting_user_publish（实际上传文件路径/hash、标题/话题、所选引用笔记和合集、声明与未关联活动状态、最终截图），视频号manual_upload_ready（相同视频/封面和专用文案路径）。hash可复用qa-check.json，仅当文件未变；保存截图并保留发布前页面。状态不确定先核查，不盲目重传。
 
@@ -35,7 +35,7 @@ description: 处理2–15分钟杂志或论文解读口播视频：校对字幕�
 
 交付直接说明“小红书已上传准备好，你可以检查后点击最后的发布”，不是声称公开发布成功；附可打开的本地文件夹、最终视频、共用封面、视频号发布文案链接及页面截图。必须提醒：“两边上传发布成功后，回来告诉我‘清理’，我会删除本期全部本地生成产物和原视频。”交付时保留全部文件。
 
-用户按约定回来说“清理”即确认上传成功并要求删除本期产物及对应原视频；若明确某平台未成功则保留。执行 `python3 <skill-dir>/scripts/finalize.py <本期目录> --purge --uploads-confirmed --delete-original` 预览（脚本按source.json路径与SHA-256核对原视频，不匹配则拒绝且不删任何东西；用户明确要求保留原视频时去掉 `--delete-original`），核对后加 `--apply` 删除原视频及整期目录，验证目录不存在，不留成品、缓存、截图或记录副本。不使用无--purge的旧模式代替。验证原视频及本期目录均不存在。源PDF保留；不得按文件名或通配符删除其他视频。始终保留skill、工作流、凭据及无关资料。完全清理后不可再交付旧链接或声称缓存仍在。
+用户按约定回来说“清理”即确认上传成功并要求删除本期产物及对应原视频；若明确某平台未成功则保留。执行 `<venv-python> <skill-dir>/scripts/finalize.py <本期目录> --purge --uploads-confirmed --delete-original` 预览（脚本按source.json路径与SHA-256核对原视频，不匹配则拒绝且不删任何东西；用户明确要求保留原视频时去掉 `--delete-original`），核对后加 `--apply` 删除原视频及整期目录，验证目录不存在，不留成品、缓存、截图或记录副本。不使用无--purge的旧模式代替。验证原视频及本期目录均不存在。源PDF保留；不得按文件名或通配符删除其他视频。始终保留skill、工作流、凭据及无关资料。完全清理后不可再交付旧链接或声称缓存仍在。
 
 ## 环境与首次使用
 

@@ -387,6 +387,14 @@ def render(job):
             timeline.extend([f"file 'captions/{name}'", f'duration {b-a:.6f}'])
     timeline.append("file 'captions/blank.png'")
     (work / 'captions.ffconcat').write_text('\n'.join(timeline)+'\n')
+    # A new render replaces the cover and media. Invalidate the previous handoff
+    # before touching them, even if encoding later fails.
+    write(job/'publish-status.json', {
+        'xiaohongshu': {'status': 'not_prepared', 'reason': 'New render; verify and upload the current files.'},
+        'wechat_channels': {'status': 'not_prepared', 'reason': 'New render; prepare the current manual upload handoff.'}})
+    for stale in ('publish.json', 'render-check.json', 'qa-check.json',
+                  '小红书发布文案.txt', '视频号发布文案.txt'):
+        (job/stale).unlink(missing_ok=True)
     make_cover(src, plan, work, job/'cover.jpg')
     (job / 'subtitles.srt').write_text('\n\n'.join(f'{i}\n{clock(a)} --> {clock(b)}\n{t}' for i, (a,b,t) in enumerate(captions,1)))
     # Single encode: cut, concat and burn in RGBA overlays (works without libass/drawtext), preserving phone autorotation.
@@ -409,9 +417,6 @@ def render(job):
     # Independent platform cover, not a silent intro inserted into the spoken video.
     write(job / 'publish.json', {'source_sha256':src['sha256'], 'video':str(output.resolve()),
           'cover':str((job/'cover.jpg').resolve()), 'platforms':plan['platforms']})
-    if not (job/'publish-status.json').exists():
-        write(job/'publish-status.json', {'xiaohongshu':{'status':'not_prepared'},
-              'wechat_channels':{'status':'not_prepared','reason':'Prepare and verify the manual upload handoff.'}})
     actual = float(probe(output)['format']['duration'])
     if abs(actual-duration)>0.2:
         raise RuntimeError('Rendered duration differs from edit timeline')

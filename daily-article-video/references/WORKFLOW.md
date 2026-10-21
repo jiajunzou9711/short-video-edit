@@ -6,15 +6,15 @@
 
 不是独立无人值守 daemon：字幕校对、文案和实时网页操作由当前 agent 完成；脚本负责可重复的媒体处理。不需要额外 LLM API key。
 
-本 skill 使用相对目录：`scripts/` 存放媒体处理与清理脚本。执行时将 `<skill-dir>` 替换为安装目录，输出目录位于当前工作区。
+本 skill 使用相对目录：`scripts/` 存放媒体处理与清理脚本。执行时将 `<skill-dir>` 替换为安装目录，输出目录位于当前工作区。所有 `<venv-python>` 使用安装器返回的虚拟环境 Python 绝对路径。
 
 ## 执行
 
 ```sh
-python3 <skill-dir>/scripts/pipeline.py prepare /绝对路径/video.MOV output/daily-video/本期名
+<venv-python> <skill-dir>/scripts/pipeline.py prepare /绝对路径/video.MOV output/daily-video/本期名
 # Agent 读转写、核对 PDF、审听疑句，写 editorial.json
-python3 <skill-dir>/scripts/pipeline.py render output/daily-video/本期名
-python3 <skill-dir>/scripts/pipeline.py check output/daily-video/本期名
+<venv-python> <skill-dir>/scripts/pipeline.py render output/daily-video/本期名
+<venv-python> <skill-dir>/scripts/pipeline.py check output/daily-video/本期名
 ```
 
 依赖：Python 3.10+/Pillow、FFmpeg/ffprobe；PDF 提取可使用 pdftotext。HDR 封面的原生 SDR 导出另需 macOS 15及以上、可运行 Swift 的开发工具链（AVFoundation/AppKit）以及 Pillow 的 ImageCms 色彩管理支持；操作见“封面表情与色彩”。ASR 使用豆包语音录音文件识别极速版接口和 `~/.config/volc.env`，可用 VOLC_RESOURCE_ID 覆盖资源配置。凭据由使用者自行配置，不能把真实凭据、请求转写或输入媒体提交到仓库。
@@ -41,7 +41,7 @@ python3 <skill-dir>/scripts/pipeline.py check output/daily-video/本期名
 }
 ```
 
-`render`先生成并校验全部字幕/解释框叠加帧与封面（布局冲突在编码前报错），再一次编码生成video.mp4，另生成cover.jpg、subtitles.srt、publish.json和含editorial.json哈希的render-check.json；`check`生成qa-check.json、work/qa-contact-sheet.jpg、小红书发布文案.txt和视频号发布文案.txt。editorial.json、源文校对说明及最终publish-status.json由agent完成；source.json及ASR/候选剪切文件由prepare生成：pause-candidates.json列出字级≥0.9秒停顿及声学静音重叠秒数，suggested-cuts.json只含声学确认的剪切。render首次初始化的发布状态是占位状态，不代表已上传或已完成手动交付，须在页面核对后更新。
+`render`先生成并校验全部字幕/解释框叠加帧与封面（布局冲突在编码前报错），再一次编码生成video.mp4，另生成cover.jpg、subtitles.srt、publish.json和含editorial.json哈希的render-check.json；`check`生成qa-check.json、work/qa-contact-sheet.jpg、小红书发布文案.txt和视频号发布文案.txt。editorial.json、源文校对说明及最终publish-status.json由agent完成；source.json及ASR/候选剪切文件由prepare生成：pause-candidates.json列出字级≥0.9秒停顿及声学静音重叠秒数，suggested-cuts.json只含声学确认的剪切。每次 render 都重置两平台发布状态，并移除旧质检与文案记录；编码失败也不能沿用旧记录。重新运行 check 并核对、上传本次成片后再更新发布状态。render 初始化的发布状态是占位状态，不代表已上传或已完成手动交付，须在页面核对后更新。
 
 封面独立上传，不插入视频开头。work/存放制作缓存与检查帧；两平台上传成功且用户回来说“清理”后，连同成品及所有记录删除。
 
@@ -102,8 +102,8 @@ try png.write(to: URL(fileURLWithPath: CommandLine.arguments[2]))
 用户之后说“清理”即确认两平台上传成功并要求删除本期产物及对应原视频（若明确有平台没成功，则保留）。脚本按source.json记录的路径与SHA-256核对原视频后与本期目录一并删除；哈希不符则全部不删。明确要求保留原视频时去掉 `--delete-original`：
 
 ```sh
-python3 <skill-dir>/scripts/finalize.py output/daily-video/本期名 --purge --uploads-confirmed --delete-original
-python3 <skill-dir>/scripts/finalize.py output/daily-video/本期名 --purge --uploads-confirmed --delete-original --apply
+<venv-python> <skill-dir>/scripts/finalize.py output/daily-video/本期名 --purge --uploads-confirmed --delete-original
+<venv-python> <skill-dir>/scripts/finalize.py output/daily-video/本期名 --purge --uploads-confirmed --delete-original --apply
 ```
 
 删除整个本期输出目录，包含最终视频、全部封面、字幕、文案、缓存、工作文件及全部记录；不留本地备份。检查目录已不存在。验证对应原视频已删除；保留原PDF、凭据、skill、流程代码和无关资料，平台作品不动。原视频删除必须依据source.json准确路径及内容核对，不使用通配符。工作流和skill不随单期清理删除。脚本拒绝范围外目录和包含原片/PDF的目录。
