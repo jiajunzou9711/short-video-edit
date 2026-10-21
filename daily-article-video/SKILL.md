@@ -5,7 +5,7 @@ description: 处理2–15分钟杂志或论文解读口播视频：校对字幕�
 
 # 每日文章视频
 
-这是通用 agent 工作流，不依赖特定模型厂商或产品。首次安装/配置从仓库 `INSTALL.md` 进入，使用本 skill 的 `scripts/setup.py`；ASR 细节见 [ASR_SETUP.md](references/ASR_SETUP.md)。以用户指定的媒体工作区为根；脚本为本 skill 的 `scripts/pipeline.py`；每期目录 `output/daily-video/<视频名>`，同名不同输入使用新目录。用户给路径即执行，不启动定时监听。schema 与故障处理见[工作流参考](references/WORKFLOW.md)，仅在需要时读取对应段落。
+这是通用 agent 工作流，不依赖特定模型厂商或产品。首次安装/配置读取 [安装规程](references/INSTALL.md)，使用本 skill 的 `scripts/setup.py`；ASR 细节见 [ASR_SETUP.md](references/ASR_SETUP.md)。以用户指定的媒体工作区为根；脚本为本 skill 的 `scripts/pipeline.py`；每期目录 `output/daily-video/<视频名>`，同名不同输入使用新目录。用户给路径即执行，不启动定时监听。schema 与故障处理见[工作流参考](references/WORKFLOW.md)，仅在需要时读取对应段落。
 
 ## 不变约束
 
@@ -39,4 +39,4 @@ description: 处理2–15分钟杂志或论文解读口播视频：校对字幕�
 
 ## 环境与首次使用
 
-安装与依赖见仓库 `INSTALL.md`；安装后的处理脚本使用安装器返回的虚拟环境 Python。宿主没有浏览器能力时，交付本地文件并如实记录平台尚未准备，不声称已上传。详细参数、JSON schema、HDR 封面操作与故障处理按需读取 [references/WORKFLOW.md](references/WORKFLOW.md)。默认使用 macOS 中文字体，其他系统可通过 `DAILY_VIDEO_FONT` 和 `DAILY_VIDEO_CARD_FONT` 指定字体。不得从这个公开模板推断任何使用者的账号、登录状态、文件上传权限或凭据已经配置。清理从媒体工作区执行；非默认输出目录显式传 `--output-root`，先预览再删除。
+安装与依赖见 [安装规程](references/INSTALL.md)；安装后的处理脚本使用安装器返回的虚拟环境 Python。宿主没有浏览器能力时，交付本地文件并如实记录平台尚未准备，不声称已上传。详细参数、JSON schema、HDR 封面操作与故障处理按需读取 [references/WORKFLOW.md](references/WORKFLOW.md)。默认使用 macOS 中文字体，其他系统可通过 `DAILY_VIDEO_FONT` 和 `DAILY_VIDEO_CARD_FONT` 指定字体。不得从这个公开模板推断任何使用者的账号、登录状态、文件上传权限或凭据已经配置。清理从媒体工作区执行；非默认输出目录显式传 `--output-root`，先预览再删除。

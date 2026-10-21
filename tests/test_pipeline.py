@@ -4,6 +4,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import MagicMock, patch
 from PIL import ImageFont
 
 spec = importlib.util.spec_from_file_location('pipeline', Path(__file__).resolve().parents[1] / 'daily-article-video/scripts/pipeline.py')
@@ -11,6 +12,52 @@ p = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(p)
 
 class MediaTests(unittest.TestCase):
+    def test_first_use_prepare_cache_pause_and_render(self):
+        """Exercise the first media job with real FFmpeg and a mocked ASR boundary."""
+        with tempfile.TemporaryDirectory(prefix='daily-video-first-use-') as tmp:
+            root = Path(tmp); source = root/'synthetic.mp4'; job = root/'job'
+            p.run(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i',
+                   'color=c=darkslategray:s=360x640:r=25:d=6', '-f', 'lavfi', '-i',
+                   r'aevalsrc=if(between(t\,2\,4)\,0\,0.3*sin(2*PI*440*t)):s=16000:d=6',
+                   '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest', '-y', source])
+            raw = {'result': {'utterances': [
+                {'start_time': 200, 'end_time': 1800, 'text': '首段测试',
+                 'words': [{'start_time': 200, 'end_time': 1800, 'text': '首段测试'}]},
+                {'start_time': 4200, 'end_time': 5800, 'text': '次段测试',
+                 'words': [{'start_time': 4200, 'end_time': 5800, 'text': '次段测试'}]}
+            ]}}
+            import json
+            response = MagicMock()
+            response.__enter__.return_value = response
+            response.headers = {'X-Api-Status-Code': '20000000'}
+            response.read.return_value = json.dumps(raw).encode()
+            with patch.object(p, 'credentials', return_value={
+                    'VOLC_API_KEY': 'synthetic-key', 'VOLC_RESOURCE_ID': 'volc.bigasr.auc_turbo'}), \
+                 patch.object(p.urllib.request, 'urlopen', return_value=response) as request:
+                p.prepare(source, job)
+                self.assertEqual(request.call_count, 1)
+            with patch.object(p.urllib.request, 'urlopen', side_effect=AssertionError('Unexpected request')):
+                p.prepare(source, job)
+            cuts = p.read(job/'work/suggested-cuts.json')
+            self.assertEqual(len(cuts), 1)
+            self.assertTrue(2 < cuts[0][0] < cuts[0][1] < 4)
+            p.write(job/'editorial.json', {
+                'reviewed': True, 'source_evidence': [{'type': 'synthetic fixture; no speech accuracy claim'}],
+                'cuts': cuts, 'captions': [
+                    {'start': .2, 'end': 1.8, 'text': '首段测试'},
+                    {'start': 4.2, 'end': 5.8, 'text': '次段测试'}],
+                'cover_title': '首次制作测试', 'cover_time': 1,
+                'platforms': {'wechat_channels': {'title': '测试', 'description': '合成媒体测试', 'tags': ['科普']}}
+            })
+            p.render(job)
+            result = p.check(job)
+            self.assertTrue(result['full_decode_passed'])
+            self.assertAlmostEqual(result['duration'], 6-(cuts[0][1]-cuts[0][0]), places=1)
+            self.assertTrue((job/'视频号发布文案.txt').is_file())
+            from PIL import Image
+            with Image.open(job/'cover.jpg') as cover:
+                self.assertEqual(cover.size, (1080, 1440))
+
     def test_timeline(self):
         kept = p.keep_ranges(5, [[2,3]])
         self.assertAlmostEqual(p.mapped(3.2, kept), 2.2)

@@ -24,6 +24,7 @@ class SetupTests(unittest.TestCase):
             target = Path(result['installed_skill'])
             self.assertTrue((target / 'scripts/pipeline.py').is_file())
             self.assertTrue((target / 'references/ASR_SETUP.md').is_file())
+            self.assertTrue((target / 'references/INSTALL.md').is_file())
             self.assertEqual(setup.install(Path(tmp), with_deps=False), result)
             (target / 'SKILL.md').write_text('local customization')
             with self.assertRaises(RuntimeError):

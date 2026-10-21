@@ -136,4 +136,4 @@ python3 -m unittest discover -s tests -v
 
 ## 首次安装和 ASR 配置
 
-从仓库 INSTALL.md 进入；使用 scripts/setup.py 安装并以返回的 Python 执行处理。配置字段、凭据存储和在线验证见 [ASR_SETUP.md](ASR_SETUP.md)。本地 doctor 检查通过不等同于真实转写服务已验证。
+从 [安装规程](INSTALL.md) 进入；使用 scripts/setup.py 安装并以返回的 Python 执行处理。配置字段、凭据存储和在线验证见 [ASR_SETUP.md](ASR_SETUP.md)。本地 doctor 检查通过不等同于真实转写服务已验证。
