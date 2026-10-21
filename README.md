@@ -75,6 +75,8 @@ JOB="output/daily-video/example"
 
 ## 开发验证
 
+独立首次安装的验收指标、实测结果及未验证范围见 [VALIDATION.md](VALIDATION.md)。
+
 在仓库根目录运行：
 
 ```sh
