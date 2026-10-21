@@ -1,6 +1,6 @@
 # 每日口播视频工作流
 
-入口：聊天中给视频路径，可附 PDF 路径。Codex 执行 ASR、源文校对、剪停顿、字幕烧录、视频帧标题封面、平台文案、小红书发布前准备和视频号手动上传交付。
+入口：聊天中给视频路径，可附 PDF 路径。当前 agent 执行 ASR、源文校对、剪停顿、字幕烧录、视频帧标题封面、平台文案、小红书发布前准备和视频号手动上传交付。
 
 发布边界：只准备并上传至最后发布前的界面，绝不自行点击发布；状态使用 awaiting_user_publish。发布需用户明确放行本次视频。 小红书须填好标题、摘要/正文、正式非活动话题和适用声明，自主选择相关的已发布视频作为引用链接，并加入最合适的一个已有合集；核对封面小图、原创声明和未关联任何活动，保留页面供用户最后点击发布。没有相关视频/合集或真实信息不足时如实说明，不虚构，不添加无关组件。具体操作标准见 skill 执行第5步。
 
@@ -17,7 +17,7 @@ python3 <skill-dir>/scripts/pipeline.py render output/daily-video/本期名
 python3 <skill-dir>/scripts/pipeline.py check output/daily-video/本期名
 ```
 
-依赖：Python 3.10+/Pillow、FFmpeg/ffprobe；PDF 提取可使用 pdftotext。HDR 封面的原生 SDR 导出另需 macOS 15及以上、可运行 Swift 的开发工具链（AVFoundation/AppKit）以及 Pillow 的 ImageCms 色彩管理支持；操作见“封面表情与色彩”。ASR 沿用现有 Seed-ASR flash 接口和 `~/.config/volc.env`，可用 VOLC_RESOURCE_ID 覆盖资源配置。凭据由使用者自行配置，不能把真实凭据、请求转写或输入媒体提交到仓库。
+依赖：Python 3.10+/Pillow、FFmpeg/ffprobe；PDF 提取可使用 pdftotext。HDR 封面的原生 SDR 导出另需 macOS 15及以上、可运行 Swift 的开发工具链（AVFoundation/AppKit）以及 Pillow 的 ImageCms 色彩管理支持；操作见“封面表情与色彩”。ASR 使用豆包语音录音文件识别极速版接口和 `~/.config/volc.env`，可用 VOLC_RESOURCE_ID 覆盖资源配置。凭据由使用者自行配置，不能把真实凭据、请求转写或输入媒体提交到仓库。
 
 ## editorial.json
 
@@ -97,7 +97,7 @@ try png.write(to: URL(fileURLWithPath: CommandLine.arguments[2]))
 
 更新publish.json最终视频路径；publish-status.json记录实际上传文件SHA-256、标题/正式话题、引用笔记、所选合集、声明状态、未关联活动及awaiting_user_publish状态，保存最终页面截图。视频号记manual_upload_ready，保留具体交付路径，生成视频号发布文案.txt。
 
-交付：“小红书已上传准备好，你可以点击最后的发布”；附Finder文件夹、最终视频、共用封面与视频号文案链接。不得把准备完成说成已公开发布。必须提醒：“两边上传发布成功后，回来告诉我‘清理’，我会删除本期全部本地生成产物和原视频。”此时不执行自动清理。
+交付：“小红书已上传准备好，你可以点击最后的发布”；附本地文件夹、最终视频、共用封面与视频号文案链接。不得把准备完成说成已公开发布。必须提醒：“两边上传发布成功后，回来告诉我‘清理’，我会删除本期全部本地生成产物和原视频。”此时不执行自动清理。
 
 用户之后说“清理”即确认两平台上传成功并要求删除本期产物及对应原视频（若明确有平台没成功，则保留）。脚本按source.json记录的路径与SHA-256核对原视频后与本期目录一并删除；哈希不符则全部不删。明确要求保留原视频时去掉 `--delete-original`：
 
@@ -133,3 +133,7 @@ python3 -m unittest discover -s tests -v
 ## 多段输入的边界
 
 `prepare` 接收一个源文件，不会自动合并视频。若任务需要多段，agent 先核对输入顺序、音轨、旋转和编码参数，再在本期范围内拼接，保留全部原件。每个原片路径与 SHA-256 必须单独记录。当前清理脚本只处理 `source.json` 的单个 `path`，不会自动删除多个原片；不能把删除拼接文件说成多个原片已清理。多段清理须先核对全部原片及生成文件的准确路径和哈希，按用户授权的范围处理；有一项不匹配则不开始删除。
+
+## 首次安装和 ASR 配置
+
+从仓库 INSTALL.md 进入；使用 scripts/setup.py 安装并以返回的 Python 执行处理。配置字段、凭据存储和在线验证见 [ASR_SETUP.md](ASR_SETUP.md)。本地 doctor 检查通过不等同于真实转写服务已验证。

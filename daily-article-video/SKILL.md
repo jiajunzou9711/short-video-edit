@@ -5,7 +5,7 @@ description: 处理2–15分钟杂志或论文解读口播视频：校对字幕�
 
 # 每日文章视频
 
-以用户指定的媒体工作区为根；脚本为本 skill 的 `scripts/pipeline.py`；每期目录 `output/daily-video/<视频名>`，同名不同输入使用新目录。用户给路径即执行，不启动定时监听。schema 与故障处理见[工作流参考](references/WORKFLOW.md)，仅在需要时读取对应段落。
+这是通用 agent 工作流，不依赖特定模型厂商或产品。首次安装/配置从仓库 `INSTALL.md` 进入，使用本 skill 的 `scripts/setup.py`；ASR 细节见 [ASR_SETUP.md](references/ASR_SETUP.md)。以用户指定的媒体工作区为根；脚本为本 skill 的 `scripts/pipeline.py`；每期目录 `output/daily-video/<视频名>`，同名不同输入使用新目录。用户给路径即执行，不启动定时监听。schema 与故障处理见[工作流参考](references/WORKFLOW.md)，仅在需要时读取对应段落。
 
 ## 不变约束
 
@@ -18,7 +18,7 @@ description: 处理2–15分钟杂志或论文解读口播视频：校对字幕�
 
 ## 执行
 
-1. `python3 <脚本> prepare <视频绝对路径> <本期目录>`：检查音轨、Seed-ASR 2.0 flash字级转写、静音候选、抽样帧。`work/pause-candidates.json`按字级间隔列出全部≥0.9秒停顿，`acoustic_silence`低于0.5的为仅ASR候选，须审听后再决定；`suggested-cuts.json`只含声学确认的。HDR输入会提示，注意封面与预览色彩。凭据从使用者本机的 `~/.config/volc.env` 读取，也可用 `VOLC_CONFIG_FILE` 指定位置；不打印密钥。静音输入需带声音原片/同步录音。同一期返工复用work内ASR，不重复调用识别。
+1. `python3 <脚本> prepare <视频绝对路径> <本期目录>`：检查音轨、豆包语音录音文件识别极速版字级转写、静音候选、抽样帧。`work/pause-candidates.json`按字级间隔列出全部≥0.9秒停顿，`acoustic_silence`低于0.5的为仅ASR候选，须审听后再决定；`suggested-cuts.json`只含声学确认的。HDR输入会提示，注意封面与预览色彩。凭据从使用者本机的 `~/.config/volc.env` 或 `VOLC_CONFIG_FILE` 指定位置读取，支持安全注入的环境变量；先运行 `setup.py doctor` 检查，缺少配置时按 [ASR_SETUP.md](references/ASR_SETUP.md) 引导使用者本机填写；不打印密钥。静音输入需带声音原片/同步录音。同一期返工复用work内ASR，不重复调用识别。
 2. 通读完整 `work/transcript.txt`、静音候选和输入抽样帧；若本期解读文章，定位对应PDF并读取相关完整文章；若是本人观点口播，记录此来源，不虚构PDF或研究依据。PDF操作优先使用环境中可用的 PDF skill 或 PDF 读取工具。只按需读取字级时间戳片段，避免输出整个ASR JSON。字幕逐条校对，疑点提取短音频审听；无音频能力就如实记录未审听。
 3. 写 `editorial.json`：原视频时间的captions/cuts/annotations、cover_title/cover_time、两平台文案、source_evidence/review_notes，完成实质校对才设reviewed:true。每期检测长停顿，约1秒以上空白为候选，结合声学静音、ASR无口播区间和上下文自主剪除，通常两侧各留0.2秒；保留呼吸/强调，不截词。字幕最多两行，按字级时间断句，不拆英文，不均匀伪造时间戳。
 4. `python3 <脚本> render <本期目录>`，再 `python3 <脚本> check <本期目录>`。editorial.json在render后改动过，check会拒绝，须重新render。check合并完整解码、时长/音轨存在性检查、开头/中段/结尾、每个解释框及每处剪切两侧抽帧，生成work/qa-contact-sheet.jpg、qa-check.json和两平台文案。查看拼图及cover.jpg，核对字幕、解释框、脸部、溢出、切点和音画同步，并完成上述封面表情与色彩两项检查；拼图过小或疑点再看原尺寸帧/短片段。HDR封面若仍由普通FFmpeg抽帧生成，须按专用操作替换为通过色彩检查的版本再上传。技术检查不等于音频审听或视觉通过，不假称验证。
@@ -33,10 +33,10 @@ description: 处理2–15分钟杂志或论文解读口播视频：校对字幕�
 
 ## 交付与清理
 
-交付直接说明“小红书已上传准备好，你可以检查后点击最后的发布”，不是声称公开发布成功；附Finder文件夹、最终视频、共用封面、视频号发布文案链接及页面截图。必须提醒：“两边上传发布成功后，回来告诉我‘清理’，我会删除本期全部本地生成产物和原视频。”交付时保留全部文件。
+交付直接说明“小红书已上传准备好，你可以检查后点击最后的发布”，不是声称公开发布成功；附可打开的本地文件夹、最终视频、共用封面、视频号发布文案链接及页面截图。必须提醒：“两边上传发布成功后，回来告诉我‘清理’，我会删除本期全部本地生成产物和原视频。”交付时保留全部文件。
 
 用户按约定回来说“清理”即确认上传成功并要求删除本期产物及对应原视频；若明确某平台未成功则保留。执行 `python3 <skill-dir>/scripts/finalize.py <本期目录> --purge --uploads-confirmed --delete-original` 预览（脚本按source.json路径与SHA-256核对原视频，不匹配则拒绝且不删任何东西；用户明确要求保留原视频时去掉 `--delete-original`），核对后加 `--apply` 删除原视频及整期目录，验证目录不存在，不留成品、缓存、截图或记录副本。不使用无--purge的旧模式代替。验证原视频及本期目录均不存在。源PDF保留；不得按文件名或通配符删除其他视频。始终保留skill、工作流、凭据及无关资料。完全清理后不可再交付旧链接或声称缓存仍在。
 
 ## 环境与首次使用
 
-安装与依赖见仓库 README；详细参数、JSON schema、HDR 封面操作与故障处理按需读取 [references/WORKFLOW.md](references/WORKFLOW.md)。默认使用 macOS 中文字体，其他系统可通过 `DAILY_VIDEO_FONT` 和 `DAILY_VIDEO_CARD_FONT` 指定字体。不得从这个公开模板推断任何使用者的账号、登录状态、文件上传权限或凭据已经配置。清理从媒体工作区执行；非默认输出目录显式传 `--output-root`，先预览再删除。
+安装与依赖见仓库 `INSTALL.md`；安装后的处理脚本使用安装器返回的虚拟环境 Python。宿主没有浏览器能力时，交付本地文件并如实记录平台尚未准备，不声称已上传。详细参数、JSON schema、HDR 封面操作与故障处理按需读取 [references/WORKFLOW.md](references/WORKFLOW.md)。默认使用 macOS 中文字体，其他系统可通过 `DAILY_VIDEO_FONT` 和 `DAILY_VIDEO_CARD_FONT` 指定字体。不得从这个公开模板推断任何使用者的账号、登录状态、文件上传权限或凭据已经配置。清理从媒体工作区执行；非默认输出目录显式传 `--output-root`，先预览再删除。

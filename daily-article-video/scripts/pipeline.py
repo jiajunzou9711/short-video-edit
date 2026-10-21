@@ -46,18 +46,35 @@ def probe(path):
     return json.loads(subprocess.check_output(['ffprobe', '-v', 'error', '-show_format', '-show_streams', '-of', 'json', str(path)]))
 
 def credentials():
+    """Read local configuration; environment values take precedence. Never log values."""
     path = Path(os.environ.get('VOLC_CONFIG_FILE', str(Path.home() / '.config/volc.env'))).expanduser()
-    if not path.is_file():
-        raise RuntimeError(f'ASR credentials file missing: {path}')
-    env = dict(os.environ)
-    for line in path.read_text().splitlines():
-        if '=' in line and not line.lstrip().startswith('#'):
-            k, v = line.split('=', 1)
-            env[k.strip()] = v.strip().strip('\"\'')
-    missing = [k for k in ('VOLC_ACCESS_KEY', 'VOLC_APP_ID') if not env.get(k)]
-    if missing:
-        raise RuntimeError(f'ASR credentials file lacks {missing}')
+    env = {}
+    if path.is_file():
+        for line in path.read_text().splitlines():
+            if '=' in line and not line.lstrip().startswith('#'):
+                k, v = line.split('=', 1)
+                env[k.strip()] = v.strip().strip('"\'')
+    env.update({k: v for k, v in os.environ.items() if k.startswith('VOLC_')})
+    fields = ('VOLC_API_KEY', 'VOLC_ACCESS_KEY', 'VOLC_APP_ID')
+    for key in fields:
+        value = env.get(key, '').strip()
+        if not value or value.upper().startswith(('YOUR_', 'REPLACE_', '<')):
+            env.pop(key, None)
+    if not env.get('VOLC_API_KEY') and not all(env.get(k) for k in ('VOLC_ACCESS_KEY', 'VOLC_APP_ID')):
+        raise RuntimeError('ASR not configured: set VOLC_API_KEY, or legacy VOLC_APP_ID + VOLC_ACCESS_KEY. See INSTALL.md / ASR_SETUP.md.')
+    env['VOLC_RESOURCE_ID'] = env.get('VOLC_RESOURCE_ID', '').strip() or 'volc.bigasr.auc_turbo'
     return env
+
+
+def asr_headers(env):
+    headers = {'Content-Type': 'application/json', 'X-Api-Resource-Id': env['VOLC_RESOURCE_ID'],
+               'X-Api-Request-Id': str(uuid.uuid4()), 'X-Api-Sequence': '-1'}
+    if env.get('VOLC_API_KEY'):
+        headers['X-Api-Key'] = env['VOLC_API_KEY']
+    else:
+        headers['X-Api-App-Key'] = env['VOLC_APP_ID']
+        headers['X-Api-Access-Key'] = env['VOLC_ACCESS_KEY']
+    return headers
 
 def transcribe(audio, dest):
     if dest.exists():
@@ -67,24 +84,20 @@ def transcribe(audio, dest):
             'audio': {'data': base64.b64encode(audio.read_bytes()).decode(), 'format': 'mp3'},
             'request': {'model_name': 'bigmodel', 'enable_itn': True, 'enable_punc': True,
                         'show_utterances': True, 'enable_speaker_info': True}}
-    headers = {'Content-Type': 'application/json', 'X-Api-Resource-Id': env.get('VOLC_RESOURCE_ID', 'volc.seedasr.auc'),
-               'X-Api-Request-Id': str(uuid.uuid4()), 'X-Api-Sequence': '-1',
-               'X-Api-Key': env['VOLC_ACCESS_KEY'], 'X-Api-App-Key': env['VOLC_APP_ID']}
+    headers = asr_headers(env)
     req = urllib.request.Request('https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash',
                                  data=json.dumps(body).encode(), headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=600) as response:
             code = response.headers.get('X-Api-Status-Code', '20000000')
-            message = response.headers.get('X-Api-Message', '')
             result = json.loads(response.read())
     except urllib.error.HTTPError as error:
         raise RuntimeError(f'ASR HTTP {error.code}; status={error.headers.get("X-Api-Status-Code")}; '
-                           f'message={error.headers.get("X-Api-Message", "")}. No render or publish.')
+                           f'provider request rejected. Check ASR_SETUP.md. No render or publish.')
     except urllib.error.URLError as error:
         raise RuntimeError(f'ASR request failed: {error.reason}. No render or publish.')
     if code != '20000000' or not result.get('result', {}).get('utterances'):
-        raise RuntimeError(f'ASR status={code}; message={message}; response keys={list(result)}; '
-                           f'service message={result.get("message", "")}. No render or publish.')
+        raise RuntimeError(f'ASR status={code}; no valid utterances. Check ASR_SETUP.md. No render or publish.')
     write(dest, result)
     return result
 
