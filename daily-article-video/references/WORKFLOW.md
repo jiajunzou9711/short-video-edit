@@ -2,7 +2,7 @@
 
 入口：聊天中给视频路径，可附 PDF 路径。当前 agent 执行 ASR、源文校对、剪停顿、字幕烧录、视频帧标题封面、平台文案、小红书发布前准备和视频号手动上传交付。
 
-发布边界：只准备并上传至最后发布前的界面，绝不自行点击发布；状态使用 awaiting_user_publish。发布需用户明确放行本次视频。 小红书须填好标题、摘要/正文、正式非活动话题和适用声明，自主选择相关的已发布视频作为引用链接，并加入最合适的一个已有合集；核对封面小图、原创声明和未关联任何活动，保留页面供用户最后点击发布。没有相关视频/合集或真实信息不足时如实说明，不虚构，不添加无关组件。具体操作标准见 skill 执行第5步。
+发布边界：通常准备并上传至最后发布前的界面，绝不自行点击发布；实际准备完成才使用 awaiting_user_publish。发布需用户明确放行本次视频。小红书须填好标题、摘要/正文、正式非活动话题和适用声明，自主选择相关的已发布视频作为引用链接，并加入最合适的一个已有合集；核对封面小图、原创声明和未关联任何活动，保留页面供用户最后点击发布。没有相关视频/合集或真实信息不足时如实说明，不虚构，不添加无关组件。用户明确要求仅本地制作或返工时，跳过浏览器与上传，分别记录本地新版本和平台旧版本，不能把旧上传状态当作新成片已上传。具体操作标准见 skill 执行第5步。
 
 不是独立无人值守 daemon：字幕校对、文案和实时网页操作由当前 agent 完成；脚本负责可重复的媒体处理。不需要额外 LLM API key。
 
@@ -17,7 +17,7 @@
 <venv-python> <skill-dir>/scripts/pipeline.py check output/daily-video/本期名
 ```
 
-依赖：Python 3.10+/Pillow、FFmpeg/ffprobe；PDF 提取可使用 pdftotext。HDR 封面的原生 SDR 导出另需 macOS 15及以上、可运行 Swift 的开发工具链（AVFoundation/AppKit）以及 Pillow 的 ImageCms 色彩管理支持；操作见“封面表情与色彩”。ASR 使用豆包语音录音文件识别极速版接口和 `~/.config/volc.env`，可用 VOLC_RESOURCE_ID 覆盖资源配置。凭据由使用者自行配置，不能把真实凭据、请求转写或输入媒体提交到仓库。
+依赖：Python 3.10+/Pillow、FFmpeg/ffprobe；PDF 提取可使用 pdftotext。HDR 封面与成片的原生 SDR 导出另需 macOS 15及以上、可运行 Swift 的开发工具链（AVFoundation/AppKit）以及 Pillow 的 ImageCms 色彩管理支持；操作见“封面表情与色彩”。ASR 使用豆包语音录音文件识别极速版接口和 `~/.config/volc.env`，可用 VOLC_RESOURCE_ID 覆盖资源配置。凭据由使用者自行配置，不能把真实凭据、请求转写或输入媒体提交到仓库。
 
 ## editorial.json
 
@@ -32,8 +32,10 @@
   "captions": [{"start": 0.3, "end": 2.1, "text": "本期实际口播内容"}],
   "cover_title": "简短内容标题",
   "cover_time": 1.0,
-  "annotation_y_fraction": 0.54,
-  "annotations": [{"start": 38.37, "end": 49.8, "title": "下丘脑视前区", "english": "preoptic hypothalamus", "text": "位于下丘脑前部，参与体温及生殖行为调节。本研究发现，其中一群小鼠神经元可能参与胚胎着床。", "checked_sources": ["对应原文及核查来源"]}],
+  "annotation_y_fraction": 0.50,
+  "caption_y_fraction": 0.70,
+  "annotation_scale": 1.0,
+  "annotations": [{"start": 38.37, "end": 50.37, "title": "深度学习", "english": "Deep learning", "text": "深度学习利用多层神经网络学习数据特征，通过训练调整连接权重，完成预测等任务。", "checked_sources": ["https://doi.org/10.1038/nature14539"]}],
   "platforms": {
     "xiaohongshu": {"title": "发布标题", "description": "正文", "tags": ["科普知识"]},
     "wechat_channels": {"title": "发布标题", "description": "正文", "tags": ["科普"]}
@@ -41,15 +43,16 @@
 }
 ```
 
-`render`先生成并校验全部字幕/解释框叠加帧与封面（布局冲突在编码前报错），再一次编码生成video.mp4，另生成cover.jpg、subtitles.srt、publish.json和含editorial.json哈希的render-check.json；`check`生成qa-check.json、work/qa-contact-sheet.jpg、小红书发布文案.txt和视频号发布文案.txt。editorial.json、源文校对说明及最终publish-status.json由agent完成；source.json及ASR/候选剪切文件由prepare生成：pause-candidates.json列出字级≥0.9秒停顿及声学静音重叠秒数，suggested-cuts.json只含声学确认的剪切。每次 render 都重置两平台发布状态，并移除旧质检与文案记录；编码失败也不能沿用旧记录。重新运行 check 并核对、上传本次成片后再更新发布状态。render 初始化的发布状态是占位状态，不代表已上传或已完成手动交付，须在页面核对后更新。
+`render`先生成并校验全部字幕/解释框叠加帧与封面（布局冲突在编码前报错），再一次编码生成video.mp4，另生成cover.jpg、subtitles.srt、publish.json和含editorial.json哈希的render-check.json；`check`生成qa-check.json、work/qa-contact-sheet.jpg、小红书发布文案.txt和视频号发布文案.txt。editorial.json、源文校对说明及最终publish-status.json由agent完成；source.json及ASR/候选剪切文件由prepare生成：pause-candidates.json列出字级≥0.9秒停顿及声学静音重叠秒数，suggested-cuts.json只含声学确认的剪切。每次 render 都重置两平台发布状态，并移除旧质检与文案记录；编码失败也不能沿用旧记录。重新运行 check 并核对、上传本次成片后再更新发布状态。render 初始化的发布状态是占位状态，不代表已上传或已完成手动交付，须在页面核对后更新。仅本地返工时分别记录本地新版与平台旧版；最终视频转换、替换或重命名后，更新publish.json路径，质检hash与交付链接须对应同一实际文件。
 
 封面独立上传，不插入视频开头。work/存放制作缓存与检查帧；两平台上传成功且用户回来说“清理”后，连同成品及所有记录删除。
 
 ## 制作参数
 
 - 字幕、cuts及annotations均使用原视频秒数，由render统一映射。每期检测长停顿：约1秒以上作为候选，与声学静音和ASR无口播区间交叉核对，按上下文决定剪除，两侧通常各留0.2秒；保留呼吸与强调，不能截词。
-- 术语解释包含中文、english、1–2个完整句子及checked_sources；源文优先校核术语和科学表述，长英文自动另起一行。annotation_y_fraction默认0.54（胸前起点），caption_y_fraction默认0.69，按构图调整；需顶部布局时显式写0.035。竖屏字幕进入底部25%平台UI区、解释框与字幕相压、超出画面或解释框时间重叠时，render报错。逐帧检查脸部、解释框与底部字幕。
-- 解释框以正常手机尺寸下清晰可读为优先：字号和整体尺寸适当放大，背景增加一点透明度；允许轻微遮到脸部，避免大范围遮脸。不为完全避开低头时的下巴而持续缩小标注。先调整位置、精简解释和断行，再按构图调整 `annotation_scale`；不能与字幕相压或侵入平台UI区。
+- 解释框的选词与文风以skill“解释框规则”为准：只解释口播已提到但未展开的名词、短语或现象，正文提供紧贴当前口播的信息补充，采用客观、准确的定义式文风。schema示例仅说明字段；只有实际说到该词时才使用。正文默认约30–40字、1–2句，附准确english及checked_sources，先按实际字体测量到两行，再渲染。
+- 1080×1920竖屏已验收模板：`annotation_scale: 1.0`，正文字号45px，两行35–38字；`annotation_y_fraction: 0.50`、`caption_y_fraction: 0.70`，每卡约10–12秒。长英文自动另起一行，整卡高度需重新核算。脚本未配置时的默认值仍为0.54/0.69，模板参数须显式写入editorial.json，不代表代码默认值已修改。render只会拒绝正文超过四行；两行是编辑验收目标，不能用“未报错”替代文案和视觉检查。
+- 胸前布局允许轻微遮到下巴，避免遮住眼睛、嘴部或大面积脸部。不能为避开下巴缩小文字，或把卡片搬到头顶与平台图标争位；先精简正文、调整断行，再在胸前微调位置。竖屏底部25%是平台UI区；解释框不能与字幕相压，不能溢出或相互重叠。以正常手机尺寸检查清晰度、脸部和字幕间隔。
 - 当前实现：`annotation_scale` 默认1.0，控制解释框字号和尺寸；背景透明度仍在 `pipeline.py` 的 `draw_overlay` 中固定为alpha 210/255（约82%不透明），尚无 `editorial.json` 配置项。后续调整背景透明度需要修改渲染样式并重新检查成片，不能仅填写一个未实现的参数就声称已生效。
 - 两平台共用一个视频与cover.jpg（1080×1440、3:4、标题上方水平居中、两侧留白避开发布时间提示和右上角播放按钮）。cover_font_fraction默认88/1080，cover_y_fraction默认66/1440；面板与文字水平居中，宽度随标题调整。标题尽量避开脸，按构图调整。3:4为默认封面比例，居中布局须核对实际平台小图，避免与播放按钮重叠。
 
@@ -87,7 +90,16 @@ try png.write(to: URL(fileURLWithPath: CommandLine.arguments[2]))
 
 ## 成片检查与日常用量
 
-`pipeline.py check <本期目录>`完整解码、核对时长和音轨存在性，并抽取开头/中段/结尾、每个解释框及每处剪切前后画面，生成拼图及带最终视频hash的qa-check.json。必须查看拼图和封面；疑点或文字过小时再看原尺寸帧/短片段。音轨存在不等于审听通过，技术检查不等于视觉通过。只在文件未改变时复用检查结果/hash；editorial.json在render后变化时check直接拒绝。HDR（HLG/PQ）输入：当前视频编码路径未实现HDR到SDR的色调映射，输出为带HDR标记的8-bit，须在平台预览核对色彩。上一节的原生SDR导出仅用于封面，不能据此认定视频也已完成转换。
+`pipeline.py check <本期目录>`完整解码、核对时长和音轨存在性，并抽取开头/中段/结尾、每个解释框及每处剪切前后画面，生成拼图及带最终视频hash的qa-check.json。必须查看拼图和封面；疑点或文字过小时再看原尺寸帧/短片段。音轨存在不等于审听通过，技术检查不等于视觉通过。只在文件未改变时复用检查结果/hash；editorial.json在render后变化时check直接拒绝。
+
+### HDR成片转换
+
+`pipeline.py`仍未自动执行HDR→SDR色调映射；若所用FFmpeg缺少zscale/libplacebo等转换能力，直接渲染HLG/PQ原片可能得到带HDR标记的8-bit成片，实际平台播放可能明显偏亮。封面的forceSDR抽帧不能代替成片转换，也不能靠手调亮度或仅改色彩标签补救。
+
+已验证的macOS方法是先用AVFoundation将原片转为Rec.709 SDR，再合成字幕和解释框。`AVMutableVideoComposition(propertiesOf: asset)`保留原画幅与方向，将`colorPrimaries`、`colorTransferFunction`、`colorYCbCrMatrix`分别设为`AVVideoColorPrimaries_ITU_R_709_2`、`AVVideoTransferFunction_ITU_R_709_2`、`AVVideoYCbCrMatrix_ITU_R_709_2`，交给H.264的`AVAssetExportSession`导出MP4。完整操作依据[Apple HDR视频技术说明](https://developer.apple.com/av-foundation/Incorporating-HDR-video-with-Dolby-Vision-into-your-apps.pdf)。导出后核对方向、时长、音轨及bt709三项标记，再与原片正常播放的肤色、衣服和背景作视觉对照。
+
+该步骤尚未集成进主脚本，需在本期适配渲染输入，不能假设有现成CLI开关；导出脚本和SDR中间文件放在本期work内，不依赖将被清理的旧期文件。`source.json`始终保留原始视频路径、时长和SHA-256，不能为使用SDR中间文件而改写原视频的清理身份。记录实际渲染输入及转换方法；如果最终文件经过转换、替换或重命名，更新publish.json并对实际交付文件重新check。更换封面时继续采用独立的原生forceSDR与ICC流程。
+
 
 日常按skill执行，需要字段时读schema、遇故障才读对应段落，不重复读取历史、脚本或全部ASR JSON。完整转写、相关文章、科学核查与疑点审听仍保留；只按需读取字级时间戳片段。长日志写work/，工具返回摘要。
 
