@@ -4,13 +4,13 @@
 
 这是 **agent 配合脚本** 的工作流。脚本负责媒体处理；原文核查、疑句判断、视觉检查和浏览器填表由当前 agent 完成。不是无人值守发布工具。
 
-## 把这个网址交给你的智能体
+## 用同一个网址安装或更新
 
 复制下面这句话给你自己的 agent：
 
-> 请读取 https://github.com/jiajunzou9711/short-video-edit ，按 INSTALL.md 为当前智能体安装并配置这个视频剪辑 skill，检查依赖，并引导我在本机安全配置语音转文字 API。需要登录、开通服务或填写凭据时提示我操作；不要让我把密钥发到聊天中。在线音频测试前先说明上传和费用并取得授权。
+> 请读取 https://github.com/jiajunzou9711/short-video-edit ，按 INSTALL.md 为当前智能体安装或更新这个视频剪辑 skill。首次安装时检查依赖，并引导我在本机安全配置语音转文字 API；已经安装时按更新规程同步 main 最新版本，保留我的凭据、虚拟环境和本地定制。需要登录、开通服务或填写凭据时提示我操作；不要让我把密钥发到聊天中。在线音频测试前先说明上传和费用并取得授权。
 
-**给 agent 的入口：[INSTALL.md](INSTALL.md)。** 它包含获取文件、识别宿主技能目录、隔离安装依赖、ASR 配置、本地诊断和短音频验证的完整步骤。安装助手为 `daily-article-video/scripts/setup.py`，不是下载后自动执行的远程 shell。
+**给 agent 的入口：[INSTALL.md](INSTALL.md)。** 默认分支 `main` 提供当前发布版本；这个链接无需随版本更换。安装规程包含获取文件、识别宿主技能目录、隔离安装依赖、ASR 配置、本地诊断、短音频验证和已有安装的更新步骤。安装助手为 `daily-article-video/scripts/setup.py`，不是下载后自动执行的远程 shell。
 
 流程使用通用 Markdown 指令和本地脚本。具有本地文件、命令执行和联网能力的智能体可以执行；支持 `SKILL.md` 的宿主装入自己的技能目录，其他宿主可读取指令并调用脚本。平台上传还需可操作的浏览器和使用者登录态；纯聊天界面不保证能在电脑上安装或操作网站。
 
@@ -32,6 +32,8 @@ python3 daily-article-video/scripts/setup.py install --skills-dir /path/to/agent
 依赖为 Python 3.10+、Pillow、FFmpeg/ffprobe 和中文字体。安装器将 Pillow 放进 skill 自己的虚拟环境；FFmpeg 和字体由 agent 按当前系统检查并补齐。默认 macOS 中文字体；其他系统需配置字体并验证渲染。HDR 原生封面导出使用 macOS 15+ / Swift，其他系统需可用的等效色彩管理方案。
 
 `doctor` 不发送音频；在线转写验证会发送音频到豆包语音，可能计费。账号注册、登录、服务开通、支付和凭据填写不能靠仓库网址自动完成；agent 会在这些步骤提示使用者操作。
+
+已有安装需要更新时，仍把上述仓库链接交给 agent，并明确说“更新已安装的 skill”；更新规程见[已有安装的更新](daily-article-video/references/INSTALL.md#5-已有安装的更新)。安装器没有 `update` 或 `--force` 命令，不能通过删除整个安装目录来代替更新。
 
 ## 使用
 

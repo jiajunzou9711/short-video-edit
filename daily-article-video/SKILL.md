@@ -5,7 +5,7 @@ description: 处理2–15分钟杂志或论文解读口播视频：校对字幕�
 
 # 每日文章视频
 
-这是通用 agent 工作流，不依赖特定模型厂商或产品。首次安装/配置读取 [安装规程](references/INSTALL.md)，使用本 skill 的 `scripts/setup.py`；ASR 细节见 [ASR_SETUP.md](references/ASR_SETUP.md)。安装后所有命令中的 `<venv-python>` 均使用安装器返回的虚拟环境 Python 绝对路径，不使用系统 `python3`；以用户指定的媒体工作区为根；脚本为本 skill 的 `scripts/pipeline.py`；每期目录 `output/daily-video/<视频名>`，同名不同输入使用新目录。用户给路径即执行，不启动定时监听。schema 与故障处理见[工作流参考](references/WORKFLOW.md)，仅在需要时读取对应段落。
+这是通用 agent 工作流，不依赖特定模型厂商或产品。首次安装/配置或更新读取 [安装规程](references/INSTALL.md)，使用本 skill 的 `scripts/setup.py`；ASR 细节见 [ASR_SETUP.md](references/ASR_SETUP.md)。安装后所有命令中的 `<venv-python>` 均使用安装器返回的虚拟环境 Python 绝对路径，不使用系统 `python3`；以用户指定的媒体工作区为根；脚本为本 skill 的 `scripts/pipeline.py`；每期目录 `output/daily-video/<视频名>`，同名不同输入使用新目录。用户给路径即执行，不启动定时监听。schema 与故障处理见[工作流参考](references/WORKFLOW.md)，仅在需要时读取对应段落。
 
 ## 不变约束
 
